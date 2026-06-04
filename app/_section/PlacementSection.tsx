@@ -1,0 +1,24 @@
+"use client";
+
+import { SectionCard } from "@/components/shared/layout/SectionCard";
+import Select from "@/components/shared/input/Select";
+import type { ToastState } from "../types";
+
+type Props = { state: ToastState; update: <K extends keyof ToastState>(key: K, value: ToastState[K]) => void };
+
+export default function PlacementSection({ state, update }: Props) {
+  return <SectionCard title="Placement" subtitle="Placement controls for native toast generation."><Select label="Placement" value={state.placement} options={[
+  "inline",
+  "top",
+  "right",
+  "bottom",
+  "left",
+  "bottom-right"
+]} onChange={(value) => update("placement", value)} />
+<Select label="Swipe" value={state.swipeDirection} options={[
+  "left",
+  "right",
+  "up",
+  "down"
+]} onChange={(value) => update("swipeDirection", value)} /></SectionCard>;
+}
