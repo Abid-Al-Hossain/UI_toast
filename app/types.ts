@@ -27,7 +27,7 @@ export type ToastState = {
   previewState: "default" | "hover" | "focus" | "active" | "open" | "closed" | "selected" | "loading" | "empty" | "error" | "success";
   motion: boolean;
   disabled: boolean;
-  role: "region" | "group" | "status" | "alert" | "dialog" | "menu" | "menubar" | "navigation" | "list" | "tree" | "table" | "tablist" | "form" | "textbox" | "img" | "application";
+  role: "status" | "alert" | "region";
   severity: string;
   placement: "inline" | "top" | "right" | "bottom" | "left" | "bottom-right";
   duration: number;

@@ -3,22 +3,90 @@
 import type { CSSProperties } from "react";
 import type { ToastState } from "../types";
 
-function shell(state: ToastState): CSSProperties {
-  return { width: state.width, minHeight: state.height, padding: state.padding, gap: state.gap, borderRadius: state.radius, border: `${state.borderWidth}px solid ${state.border}`, boxShadow: `0 ${Math.round(state.shadow / 3)}px ${state.shadow}px rgba(0,0,0,.28)`, background: state.background, color: state.foreground, fontFamily: state.fontFamily, opacity: state.disabled ? 0.55 : 1 };
+const severityTone: Record<string, { icon: string; fallback: string }> = {
+  info: { icon: "i", fallback: "#38bdf8" },
+  success: { icon: "+", fallback: "#22c55e" },
+  warning: { icon: "!", fallback: "#f59e0b" },
+  error: { icon: "!", fallback: "#fb7185" },
+};
+
+function shell(state: ToastState, index: number): CSSProperties {
+  return {
+    width: state.width,
+    minHeight: Math.max(92, Math.round(state.height / 3)),
+    padding: state.padding,
+    borderRadius: state.radius,
+    border: `${state.borderWidth}px solid ${state.border}`,
+    boxShadow: `0 ${Math.round(state.shadow / 3) + index * 3}px ${state.shadow + index * 6}px rgba(0,0,0,.28)`,
+    background: state.background,
+    color: state.foreground,
+    fontFamily: state.fontFamily,
+    opacity: state.disabled || state.previewState === "closed" ? 0.55 : 1,
+    transform: state.motion ? `translate(${index * 6}px, ${index * 6}px)` : undefined,
+  };
 }
 
 export default function LivePreview({ state }: { state: ToastState }) {
-  const model = state as Record<string, unknown>;
-  const numberValue = (key: string, fallback: number) => typeof model[key] === "number" ? model[key] : fallback;
-  const stringValue = (key: string, fallback: string) => typeof model[key] === "string" ? model[key] : fallback;
-  const boolValue = (key: string) => typeof model[key] === "boolean" ? model[key] : false;
-  const count = numberValue("itemCount", numberValue("rowCount", numberValue("slideCount", numberValue("imageCount", numberValue("filterCount", numberValue("controlCount", 5))))));
-  const items = Array.from({ length: count }, (_, index) => index + 1);
-  const badge = (text: string) => <span className="rounded-full border px-3 py-1 text-xs" style={{ borderColor: state.border, color: state.accent }}>{text}</span>;
-  const panel = shell(state);
-  if ("chartType" in model) return <section role="img" aria-label={state.ariaLabel} style={panel} className="grid content-center"><h3 style={{ fontSize: state.titleSize }}>{state.title}</h3><div className="flex items-end gap-3">{items.map((item) => <div key={item} className="w-10 rounded-t-xl" style={{ height: 36 + item * 18, background: state.accent }} />)}</div></section>;
-  if ("src" in model && ("showTimeline" in model || "showCaptions" in model)) return <section role={state.role} aria-label={state.ariaLabel} style={panel} className="grid content-center"><h3>{state.title}</h3>{"showTimeline" in model ? <audio controls muted={boolValue("muted")} loop={boolValue("loop")} preload={stringValue("preload", "metadata")} className="w-full" /> : <video controls muted={boolValue("muted")} loop={boolValue("loop")} preload={stringValue("preload", "metadata")} poster={stringValue("poster", "")} className="w-full rounded-xl bg-black/40" />}</section>;
-  if (state.role === "dialog") return <div className="grid place-items-center"><section role="dialog" aria-label={state.ariaLabel} style={panel} className="grid"><h3 style={{ fontSize: state.titleSize }}>{state.title}</h3><p style={{ color: stringValue("muted", "#94a3b8") }}>{state.description}</p><div className="flex gap-2"><button type="button" className="rounded-xl px-4 py-2" style={{ background: state.accent, color: "#020617" }}>Action</button><button type="button" className="rounded-xl border px-4 py-2" style={{ borderColor: state.border }}>Cancel</button></div></section></div>;
-  if (state.role === "table") return <table role="table" aria-label={state.ariaLabel} style={panel}><caption>{stringValue("caption", state.title)}</caption><tbody>{items.map((item) => <tr key={item}><th className="p-2 text-left">Row {item}</th><td className="p-2">{state.label}</td></tr>)}</tbody></table>;
-  return <section id={state.id} role={state.role} aria-label={state.ariaLabel} tabIndex={state.tabIndex} style={panel} className="grid content-center"><h3 style={{ fontSize: state.titleSize, fontWeight: state.fontWeight }}>{state.title}</h3><p style={{ color: stringValue("muted", "#94a3b8"), fontSize: state.bodySize }}>{state.description}</p><div className="flex flex-wrap gap-2">{items.map((item) => badge(`${state.label} ${item}`))}</div><p className="text-xs" style={{ color: stringValue("muted", "#94a3b8") }}>{state.helper} · {stringValue("previewState", "default")}</p></section>;
+  const tone = severityTone[state.severity] ?? severityTone.info;
+  const accent = state.accent || tone.fallback;
+  const count = Math.max(1, Math.min(5, Math.round(state.stackCount)));
+  const liveRole = state.role === "alert" || state.severity === "error" ? "alert" : "status";
+  const livePoliteness = liveRole === "alert" ? "assertive" : "polite";
+  const isFocused = state.previewState === "focus";
+
+  return (
+    <section
+      id={state.id}
+      role={state.role === "region" ? "region" : undefined}
+      aria-label={state.ariaLabel}
+      data-placement={state.placement}
+      data-swipe-direction={state.swipeDirection}
+      className="grid gap-3"
+      style={{ justifyItems: state.placement.includes("right") ? "end" : "start" }}
+    >
+      {Array.from({ length: count }, (_, index) => (
+        <article
+          key={index}
+          role={liveRole}
+          aria-live={livePoliteness}
+          aria-atomic="true"
+          tabIndex={state.disabled ? -1 : state.tabIndex}
+          className="grid gap-3"
+          style={{
+            ...shell(state, index),
+            outline: isFocused && index === 0 ? `3px solid ${accent}` : "none",
+            outlineOffset: isFocused && index === 0 ? 4 : 0,
+          }}
+        >
+          <div className="flex items-start gap-3">
+            <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-sm font-black" style={{ borderColor: accent, color: accent }}>
+              {tone.icon}
+            </span>
+            <div className="grid min-w-0 flex-1 gap-1">
+              <h3 className="m-0" style={{ fontSize: state.titleSize, fontWeight: state.fontWeight }}>
+                {index === 0 ? state.title : `${state.title} ${index + 1}`}
+              </h3>
+              <p className="m-0" style={{ color: state.muted, fontSize: state.bodySize }}>
+                {state.description}
+              </p>
+            </div>
+            {state.dismissible ? (
+              <button type="button" disabled={state.disabled} aria-label="Dismiss toast" className="rounded-xl border px-3 py-2 text-sm" style={{ borderColor: state.border, color: state.foreground }}>
+                x
+              </button>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs" style={{ color: state.muted }}>
+            <span>{state.helper}</span>
+            <span>{state.duration}ms</span>
+          </div>
+          {state.showAction ? (
+            <button type="button" disabled={state.disabled} className="justify-self-start rounded-xl px-4 py-2 text-sm font-bold" style={{ background: accent, color: "#020617" }}>
+              {state.label}
+            </button>
+          ) : null}
+        </article>
+      ))}
+    </section>
+  );
 }
