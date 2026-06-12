@@ -41,6 +41,7 @@ export function buildReactCode(state: ToastState) {
     "          fontFamily: state.fontFamily,",
     "          opacity: state.disabled || state.previewState === \"closed\" ? 0.55 : 1,",
     "          transform: state.motion ? \"translate(\" + index * 6 + \"px, \" + index * 6 + \"px)\" : undefined,",
+    "          transition: state.motion ? \"opacity 0.3s ease, transform 0.3s ease\" : \"none\",",
     "        }}>",
     "          <div style={{ display: \"flex\", alignItems: \"flex-start\", gap: 12 }}>",
     "            <span aria-hidden=\"true\" style={{ display: \"grid\", placeItems: \"center\", width: 36, height: 36, flexShrink: 0, borderRadius: 12, border: \"1px solid \" + accent, color: accent, fontWeight: 900 }}>{tone.icon}</span>",
