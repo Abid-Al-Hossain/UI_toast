@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import type { ToastState } from "../types";
+import { SYSTEM_FONTS } from "@/components/shared/typography/fontConstants";
 
 const InfoIcon = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -37,20 +38,43 @@ const severityTone: Record<string, { icon: ReactNode; fallback: string }> = {
   error: { icon: <ErrorIcon />, fallback: "#fb7185" },
 };
 
+function resolveFont(state: { fontBucket: "system" | "google"; googleFontFamily: string; systemFontIdx: number }): string {
+  return state.fontBucket === "google"
+    ? `"${state.googleFontFamily}", sans-serif`
+    : (SYSTEM_FONTS[state.systemFontIdx]?.css ?? "inherit");
+}
+
+function buildShadow(state: { shadowEnabled: boolean; shadowX: number; shadowY: number; shadowBlur: number; shadowSpread: number; shadowColor: string; shadowOpacity: number }): string {
+  if (!state.shadowEnabled) return "none";
+  const hex = Math.round(state.shadowOpacity * 255).toString(16).padStart(2, "0");
+  return `${state.shadowX}px ${state.shadowY}px ${state.shadowBlur}px ${state.shadowSpread}px ${state.shadowColor}${hex}`;
+}
+
+function buildRadius(state: { radiusLinked: boolean; radius: number; radiusTL: number; radiusTR: number; radiusBR: number; radiusBL: number }): string {
+  return state.radiusLinked
+    ? `${state.radius}px`
+    : `${state.radiusTL}px ${state.radiusTR}px ${state.radiusBR}px ${state.radiusBL}px`;
+}
+
 function shell(state: ToastState, index: number): CSSProperties {
   return {
     width: state.width,
     minHeight: Math.max(92, Math.round(state.height / 3)),
     padding: state.padding,
-    borderRadius: state.radius,
-    border: `${state.borderWidth}px solid ${state.border}`,
-    boxShadow: `0 ${Math.round(state.shadow / 3) + index * 3}px ${state.shadow + index * 6}px rgba(0,0,0,.28)`,
+    borderRadius: buildRadius(state),
+    border: `${state.borderWidth}px ${state.borderStyle} ${state.border}`,
+    boxShadow: `0 ${Math.round(state.shadowBlur / 3) + index * 3}px ${state.shadowBlur + index * 6}px rgba(0,0,0,.28)`,
     background: state.background,
     color: state.foreground,
-    fontFamily: state.fontFamily,
+    fontFamily: resolveFont(state),
+    fontStyle: state.fontStyle,
+    textTransform: state.textTransform,
+    textDecoration: state.textDecoration,
+    letterSpacing: `${state.letterSpacing}${state.letterSpacingUnit}`,
+    lineHeight: state.lineHeight,
     opacity: state.disabled || state.previewState === "closed" ? 0.55 : 1,
-    transform: state.motion ? `translate(${index * 6}px, ${index * 6}px)` : undefined,
-    transition: state.motion ? "opacity 0.3s ease, transform 0.3s ease" : "none",
+    transform: state.transitionDuration > 0 ? `translate(${index * 6}px, ${index * 6}px)` : undefined,
+    transition: state.transitionDuration > 0 ? "opacity 0.3s ease, transform 0.3s ease" : "none",
   };
 }
 
