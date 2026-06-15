@@ -1,4 +1,4 @@
-export type SectionId = "presets" | "basics" | "metadata" | "content" | "items" | "behavior" | "layout" | "placement" | "sizing" | "colors" | "border" | "radius" | "shadow" | "typography" | "transitions" | "focus-ring" | "states" | "accessibility";
+export type SectionId = "presets" | "basics" | "metadata" | "content" | "items" | "behavior" | "layout" | "placement" | "sizing" | "colors" | "border" | "radius" | "shadow" | "typography" | "transitions" | "focus-ring" | "states" | "disabled" | "accessibility";
 
 export type ToastState = {
   title: string;
@@ -54,11 +54,24 @@ export type ToastState = {
   muted: string;
   accent: string;
   border: string;
+  infoColor: string;
+  successColor: string;
+  warningColor: string;
+  errorColor: string;
+  actionText: string;
+  dismissBorder: string;
+  dismissColor: string;
   titleSize: number;
   bodySize: number;
   fontWeight: number;
   previewState: "default" | "hover" | "focus" | "active" | "open" | "closed" | "selected" | "loading" | "empty" | "error" | "success";
   disabled: boolean;
+  disabledOpacity: number;
+  disabledCursor: "not-allowed" | "default" | "pointer";
+  disabledUseCustomColors: boolean;
+  disabledBg: string;
+  disabledText: string;
+  disabledBorder: string;
   role: "status" | "alert" | "region";
   severity: string;
   placement: "inline" | "top" | "right" | "bottom" | "left" | "bottom-right";
@@ -67,6 +80,43 @@ export type ToastState = {
   showAction: boolean;
   stackCount: number;
   swipeDirection: "left" | "right" | "up" | "down";
+  // Base surface
+  toastBg: string;
+  toastBorder: string;
+  toastRadius: number;
+  toastShadow: string;
+  toastVariant: "filled" | "outlined" | "standard" | "left-accent";
+  // Severity surfaces
+  infoBg: string;
+  infoBorderColor: string;
+  successBg: string;
+  successBorderColor: string;
+  warningBg: string;
+  warningBorderColor: string;
+  errorBg: string;
+  errorBorderColor: string;
+  // Icon
+  iconColor: string;
+  iconSize: number;
+  // Action button
+  actionBg: string;
+  actionBorder: string;
+  actionHoverBg: string;
+  // Dismiss button
+  dismissHoverBg: string;
+  dismissHoverColor: string;
+  // Progress bar
+  progressBarEnabled: boolean;
+  progressBarColor: string;
+  progressBarBg: string;
+  progressBarHeight: number;
+  // Stacking & behavior
+  stackGap: number;
+  stackOffset: number;
+  stackScaleRatio: number;
+  pauseOnHover: boolean;
+  pauseOnWindowBlur: boolean;
+  maxToasts: number;
 };
 
 export type StudioPreset = { id: string; family: string; archetype: string; variant: string; size: string; tags: string[]; state: Partial<ToastState> & Record<string, unknown> };
@@ -139,6 +189,10 @@ export const SECTIONS: Array<{ id: SectionId; label: string }> = [
   {
     "id": "states",
     "label": "State Preview"
+  },
+  {
+    "id": "disabled",
+    "label": "Disabled"
   },
   {
     "id": "accessibility",

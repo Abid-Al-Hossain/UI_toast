@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { ToastState } from "../types";
 import { SYSTEM_FONTS } from "@/components/shared/typography/fontConstants";
@@ -31,11 +32,11 @@ const ErrorIcon = () => (
   </svg>
 );
 
-const severityTone: Record<string, { icon: ReactNode; fallback: string }> = {
-  info: { icon: <InfoIcon />, fallback: "#38bdf8" },
-  success: { icon: <SuccessIcon />, fallback: "#22c55e" },
-  warning: { icon: <WarningIcon />, fallback: "#f59e0b" },
-  error: { icon: <ErrorIcon />, fallback: "#fb7185" },
+const SEVERITY_ICONS: Record<string, ReactNode> = {
+  info: <InfoIcon />,
+  success: <SuccessIcon />,
+  warning: <WarningIcon />,
+  error: <ErrorIcon />,
 };
 
 function resolveFont(state: { fontBucket: "system" | "google"; googleFontFamily: string; systemFontIdx: number }): string {
@@ -56,15 +57,34 @@ function buildRadius(state: { radiusLinked: boolean; radius: number; radiusTL: n
     : `${state.radiusTL}px ${state.radiusTR}px ${state.radiusBR}px ${state.radiusBL}px`;
 }
 
+function severityColor(state: ToastState, kind: "bg" | "border"): string {
+  const map: Record<string, { bg: string; border: string }> = {
+    info: { bg: state.infoBg, border: state.infoBorderColor },
+    success: { bg: state.successBg, border: state.successBorderColor },
+    warning: { bg: state.warningBg, border: state.warningBorderColor },
+    error: { bg: state.errorBg, border: state.errorBorderColor },
+  };
+  const entry = map[state.severity];
+  if (!entry) return kind === "bg" ? state.toastBg : state.toastBorder;
+  return kind === "bg" ? entry.bg : entry.border;
+}
+
 function shell(state: ToastState, index: number): CSSProperties {
+  const sevBorder = severityColor(state, "border");
+  const variant = state.toastVariant;
+  const background = variant === "filled" ? severityColor(state, "bg") : state.toastBg;
+  const borderColor = variant === "filled" || variant === "outlined" ? sevBorder : state.toastBorder;
+  const borderWidth = variant === "outlined" ? Math.max(2, state.borderWidth) : state.borderWidth;
+  const scale = Math.max(0.8, 1 - index * state.stackScaleRatio);
   return {
     width: state.width,
     minHeight: Math.max(92, Math.round(state.height / 3)),
     padding: state.padding,
-    borderRadius: buildRadius(state),
-    border: `${state.borderWidth}px ${state.borderStyle} ${state.border}`,
-    boxShadow: `0 ${Math.round(state.shadowBlur / 3) + index * 3}px ${state.shadowBlur + index * 6}px rgba(0,0,0,.28)`,
-    background: state.background,
+    borderRadius: state.toastRadius,
+    border: `${borderWidth}px ${state.borderStyle} ${state.disabled && state.disabledUseCustomColors ? state.disabledBorder : borderColor}`,
+    borderLeft: variant === "left-accent" ? `4px solid ${sevBorder}` : undefined,
+    boxShadow: state.toastShadow,
+    background: state.disabled && state.disabledUseCustomColors ? state.disabledBg : background,
     color: state.foreground,
     fontFamily: resolveFont(state),
     fontStyle: state.fontStyle,
@@ -72,19 +92,28 @@ function shell(state: ToastState, index: number): CSSProperties {
     textDecoration: state.textDecoration,
     letterSpacing: `${state.letterSpacing}${state.letterSpacingUnit}`,
     lineHeight: state.lineHeight,
-    opacity: state.disabled || state.previewState === "closed" ? 0.55 : 1,
-    transform: state.transitionDuration > 0 ? `translate(${index * 6}px, ${index * 6}px)` : undefined,
+    opacity: state.disabled || state.previewState === "closed" ? state.disabledOpacity : 1,
+    transform: `translate(${index * state.stackOffset}px, ${index * state.stackOffset}px) scale(${scale})`,
     transition: state.transitionDuration > 0 ? "opacity 0.3s ease, transform 0.3s ease" : "none",
   };
 }
 
+function toastFallback(state: ToastState): string {
+  if (state.severity === "success") return state.successColor;
+  if (state.severity === "warning") return state.warningColor;
+  if (state.severity === "error") return state.errorColor;
+  return state.infoColor;
+}
+
 export default function LivePreview({ state }: { state: ToastState }) {
-  const tone = severityTone[state.severity] ?? severityTone.info;
-  const accent = state.accent || tone.fallback;
-  const count = Math.max(1, Math.min(5, Math.round(state.stackCount)));
+  const icon = SEVERITY_ICONS[state.severity] ?? SEVERITY_ICONS.info;
+  const accent = state.accent || toastFallback(state);
+  const count = Math.max(1, Math.min(Math.max(1, Math.round(state.maxToasts)), Math.round(state.stackCount)));
   const liveRole = state.role === "alert" || state.severity === "error" ? "alert" : "status";
   const livePoliteness = liveRole === "alert" ? "assertive" : "polite";
   const isFocused = state.previewState === "focus";
+  const [actionHover, setActionHover] = useState(-1);
+  const [dismissHover, setDismissHover] = useState(-1);
 
   return (
     <section
@@ -93,8 +122,10 @@ export default function LivePreview({ state }: { state: ToastState }) {
       aria-label={state.ariaLabel}
       data-placement={state.placement}
       data-swipe-direction={state.swipeDirection}
-      className="grid gap-3"
-      style={{ justifyItems: state.placement.includes("right") ? "end" : "start" }}
+      data-pause-on-hover={state.pauseOnHover}
+      data-pause-on-window-blur={state.pauseOnWindowBlur}
+      className="grid"
+      style={{ gap: state.stackGap, justifyItems: state.placement.includes("right") ? "end" : "start" }}
     >
       {Array.from({ length: count }, (_, index) => (
         <article
@@ -111,8 +142,8 @@ export default function LivePreview({ state }: { state: ToastState }) {
           }}
         >
           <div className="flex items-start gap-3">
-            <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-sm font-black" style={{ borderColor: accent, color: accent }}>
-              {tone.icon}
+            <span aria-hidden="true" className="grid shrink-0 place-items-center rounded-xl border font-black" style={{ width: state.iconSize + 20, height: state.iconSize + 20, borderColor: state.iconColor, color: state.iconColor }}>
+              <span style={{ display: "grid", placeItems: "center", width: state.iconSize, height: state.iconSize }}>{icon}</span>
             </span>
             <div className="grid min-w-0 flex-1 gap-1">
               <h3 className="m-0" style={{ fontSize: state.titleSize, fontWeight: state.fontWeight }}>
@@ -123,7 +154,15 @@ export default function LivePreview({ state }: { state: ToastState }) {
               </p>
             </div>
             {state.dismissible ? (
-              <button type="button" disabled={state.disabled} aria-label="Dismiss toast" className="rounded-xl border px-3 py-2" style={{ borderColor: state.border, color: state.foreground, lineHeight: 0 }}>
+              <button
+                type="button"
+                disabled={state.disabled}
+                aria-label="Dismiss toast"
+                onMouseEnter={() => setDismissHover(index)}
+                onMouseLeave={() => setDismissHover(-1)}
+                className="rounded-xl border px-3 py-2"
+                style={{ borderColor: state.dismissBorder, color: dismissHover === index ? state.dismissHoverColor : state.dismissColor, background: dismissHover === index ? state.dismissHoverBg : "transparent", lineHeight: 0 }}
+              >
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <line x1="2" y1="2" x2="12" y2="12" /><line x1="12" y1="2" x2="2" y2="12" />
                 </svg>
@@ -132,12 +171,24 @@ export default function LivePreview({ state }: { state: ToastState }) {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs" style={{ color: state.muted }}>
             <span>{state.helper}</span>
-            <span>{state.duration}ms</span>
+            <span>{state.duration}ms{state.pauseOnHover ? " · pause on hover" : ""}</span>
           </div>
           {state.showAction ? (
-            <button type="button" disabled={state.disabled} className="justify-self-start rounded-xl px-4 py-2 text-sm font-bold" style={{ background: accent, color: "#020617" }}>
+            <button
+              type="button"
+              disabled={state.disabled}
+              onMouseEnter={() => setActionHover(index)}
+              onMouseLeave={() => setActionHover(-1)}
+              className="justify-self-start rounded-xl px-4 py-2 text-sm font-bold"
+              style={{ background: actionHover === index ? state.actionHoverBg : state.actionBg, color: state.actionText, border: `1px solid ${state.actionBorder}` }}
+            >
               {state.label}
             </button>
+          ) : null}
+          {state.progressBarEnabled ? (
+            <div aria-hidden="true" style={{ height: state.progressBarHeight, borderRadius: 999, background: state.progressBarBg, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: "62%", background: state.progressBarColor }} />
+            </div>
           ) : null}
         </article>
       ))}
