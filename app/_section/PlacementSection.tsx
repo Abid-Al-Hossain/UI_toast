@@ -7,7 +7,8 @@ import type { ToastState } from "../types";
 type Props = { state: ToastState; update: <K extends keyof ToastState>(key: K, value: ToastState[K]) => void };
 
 export default function PlacementSection({ state, update }: Props) {
-  return <SectionCard title="Placement" subtitle="Placement controls for native toast generation."><Select label="Placement" value={state.placement} options={[
+  return <SectionCard title="Placement" subtitle="Placement controls for native toast generation.">
+      <div className="space-y-4"><Select label="Placement" value={state.placement} options={[
   "inline",
   "top",
   "right",
@@ -20,5 +21,6 @@ export default function PlacementSection({ state, update }: Props) {
   "right",
   "up",
   "down"
-]} onChange={(value) => update("swipeDirection", value)} /></SectionCard>;
+]} onChange={(value) => update("swipeDirection", value)} /></div>
+    </SectionCard>;
 }
